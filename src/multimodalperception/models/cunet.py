@@ -1,9 +1,10 @@
 from __future__ import annotations
+from copy import deepcopy
 
 import torch
 import torch.nn as nn
 
-from src.multimodalperception.models.blocks import AttentionBlock, CrossAttentionBlock, ModalDropoutBlock
+from src.multimodalperception.models.blocks import AttentionBlock, CrossAttentionBlock, ModalDropoutBlock, ResidualBlock
 
 
 # UNet
@@ -82,6 +83,8 @@ class UNet(nn.Module):
             skips.append(x)
             x = downsample(x)
 
+        skips_copied = deepcopy(skips)
+
         # 中间处理
         x = self.mid_block1(x)
         x = self.mid_attn(x)
@@ -90,7 +93,7 @@ class UNet(nn.Module):
         # 上采样过程
         for upsample, block, attn in self.up_blocks:
             x = upsample(x)
-            x = torch.cat([x, skips.pop()], dim=1)
+            x = torch.cat([x, skips_copied.pop()], dim=1)
             x = block(x)
             x = attn(x)
 
@@ -98,7 +101,7 @@ class UNet(nn.Module):
         x = self.out_norm(x)
         x = self.act(x)
 
-        return self.out_conv(x)
+        return self.out_conv(x), skips
 
 
 class CUnet(nn.Module):
@@ -106,13 +109,22 @@ class CUnet(nn.Module):
         super().__init__()
         self.modal_droupout = ModalDropoutBlock(0.1)
 
+        self.rgb_unet = UNet(3, 1)
+        self.thermal_unet = UNet(1, 1)
+
+        self.cross_attentation = CrossAttentionBlock()
+
     def forward(self, inputs: list[torch.Tensor]):
         inputs = self.modal_droupout(inputs)
 
         # 模态信息拆分
+        rgb_raw, theraml_raw = inputs[0], inputs[1]
 
-        # 下采样
+        rgb_feature, rgb_skips = self.rgb_unet(rgb_raw)
+        thermal_feature, thermal_skips = self.thermal_unet(theraml_raw)
 
-        # 交叉
+        # 特征交叉融合（拼接/相加）
+        rgb_attn = self.cross_attn_rgb(rgb_feature, thermal_feature, thermal_feature)
+        thermal_attn = self.cross_attn_thermal(thermal_feature, rgb_feature, rgb_feature)
 
-        # 上采样
+        fused_attn = torch.cat([rgb_attn, thermal_attn], dim=1)  # (B,512,28,28)

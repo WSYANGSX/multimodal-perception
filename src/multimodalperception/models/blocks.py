@@ -13,6 +13,13 @@ class ModalDropoutBlock(nn.Module):
         self.probability = probability
 
     def forward(self, input_modals: list[torch.Tensor]) -> list[torch.Tensor]:
+        """
+        Args:
+            input_modals (list[torch.Tensor]): 所有输入模态信息组成的列表[RGB:(batch_size, channels, hight, weight), Thermal:(batch_size, channels, hight, weight), ...]。
+
+        Returns:
+            list[torch.Tensor]: 随机丢弃某组数据某一模态信息后组成的列表。
+        """
         if not input_modals:
             return input_modals
 
@@ -84,3 +91,31 @@ class CrossAttentionBlock(nn.Module):
         attn_output = attn_output.permute(1, 2, 0).view(B, C, H, W)
 
         return attn_output
+
+
+# 残差模块
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, time_dim: int, dropout: float = 0.1) -> None:
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)  # 图像大小不变
+        self.norm1 = nn.GroupNorm(32, out_channels)
+
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)  # 图像大小不变
+        self.norm2 = nn.GroupNorm(32, out_channels)
+
+        self.dropout = nn.Dropout(dropout)
+        self.act = nn.SiLU()
+
+        if in_channels != out_channels:
+            self.shortcut = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        else:
+            self.shortcut = nn.Identity()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = self.conv1(x)
+        h = self.norm1(h)
+        h = self.act(h)
+        h = self.conv2(self.dropout(h))
+        h = self.norm2(h)
+
+        return h + self.shortcut(x)
