@@ -1,12 +1,8 @@
 import torch
 
-inputs = torch.stack(
-    [
-        torch.randn(3, 4, 4, device="cuda"),
-        torch.randn(3, 4, 4, device="cuda"),
-        torch.randn(3, 4, 4, device="cuda"),
-    ]
-)
-inputs[0] = 0.0
+batch_size = 10
 
-print(inputs)
+mask = torch.rand(batch_size) <= 0.5
+print(mask)
+selected_samples = torch.nonzero(mask)[:, 0]
+print(selected_samples)
