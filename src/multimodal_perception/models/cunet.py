@@ -4,10 +4,11 @@ from copy import deepcopy
 import torch
 import torch.nn as nn
 
-from src.multimodalperception.models.blocks import AttentionBlock, CrossAttentionBlock, ModalDropoutBlock, ResidualBlock
+from multimodal_perception.models.base import BaseNet
+from multimodal_perception.models.blocks import AttentionBlock, CrossAttentionBlock, ModalDropoutBlock, ResidualBlock
 
 
-# UNet
+# UNet模块
 class UNet(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
@@ -104,7 +105,7 @@ class UNet(nn.Module):
         return self.out_conv(x), skips
 
 
-class CUnet(nn.Module):
+class CUnet(BaseNet):
     def __init__(self):
         super().__init__()
         self.modal_droupout = ModalDropoutBlock(0.1)
@@ -128,3 +129,6 @@ class CUnet(nn.Module):
         thermal_attn = self.cross_attn_thermal(thermal_feature, rgb_feature, rgb_feature)
 
         fused_attn = torch.cat([rgb_attn, thermal_attn], dim=1)  # (B,512,28,28)
+
+    def view_structure(self):
+        pass
