@@ -73,7 +73,7 @@ class UNet(nn.Module):
         self.out_norm = nn.GroupNorm(32, 64)
         self.out_conv = nn.Conv2d(64, self.out_channels, 3, 1)
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor) -> tuple:
         # 存储跳跃连接
         skips = []
 
@@ -105,9 +105,13 @@ class UNet(nn.Module):
         return self.out_conv(x), skips
 
 
-class CUnet(BaseNet):
-    def __init__(self):
+# 分割网络
+class SegCUnet(BaseNet):
+    def __init__(self, rgb_size: torch.Size, thermal_size: torch.Size):
         super().__init__()
+        self.rgb_size = rgb_size
+        self.thermal_size = thermal_size
+
         self.modal_droupout = ModalDropoutBlock(0.1)
 
         self.rgb_unet = UNet(3, 1)
@@ -115,11 +119,13 @@ class CUnet(BaseNet):
 
         self.cross_attentation = CrossAttentionBlock()
 
-    def forward(self, inputs: list[torch.Tensor]):
+        self.post_process = nn.Conv2d(2, 1, 3, 1)
+
+    def forward(self, inputs: dict[str, torch.Tensor]) -> torch.Tensor:
         inputs = self.modal_droupout(inputs)
 
         # 模态信息拆分
-        rgb_raw, theraml_raw = inputs[0], inputs[1]
+        rgb_raw, theraml_raw = inputs["rgb"], inputs["theraml"]
 
         rgb_feature, rgb_skips = self.rgb_unet(rgb_raw)
         thermal_feature, thermal_skips = self.thermal_unet(theraml_raw)
@@ -130,5 +136,39 @@ class CUnet(BaseNet):
 
         fused_attn = torch.cat([rgb_attn, thermal_attn], dim=1)  # (B,512,28,28)
 
+        output = self.post_process(fused_attn)
+
+        return output
+
     def view_structure(self):
         pass
+
+
+# # 目标检测网络
+# class DetCUnet(BaseNet):
+#     def __init__(self):
+#         super().__init__()
+#         self.modal_droupout = ModalDropoutBlock(0.1)
+
+#         self.rgb_unet = UNet(3, 1)
+#         self.thermal_unet = UNet(1, 1)
+
+#         self.cross_attentation = CrossAttentionBlock()
+
+#     def forward(self, inputs: list[torch.Tensor]):
+#         inputs = self.modal_droupout(inputs)
+
+#         # 模态信息拆分
+#         rgb_raw, theraml_raw = inputs[0], inputs[1]
+
+#         rgb_feature, rgb_skips = self.rgb_unet(rgb_raw)
+#         thermal_feature, thermal_skips = self.thermal_unet(theraml_raw)
+
+#         # 特征交叉融合（拼接/相加）
+#         rgb_attn = self.cross_attn_rgb(rgb_feature, thermal_feature, thermal_feature)
+#         thermal_attn = self.cross_attn_thermal(thermal_feature, rgb_feature, rgb_feature)
+
+#         fused_attn = torch.cat([rgb_attn, thermal_attn], dim=1)  # (B,512,28,28)
+
+#     def view_structure(self):
+#         pass

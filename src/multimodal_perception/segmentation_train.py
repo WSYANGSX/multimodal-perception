@@ -1,7 +1,8 @@
-from torchvision import transforms
+import torch
+from torchvision.transforms import Compose, ToTensor, Normalize
 
 from multimodal_perception.trainer import Trainer
-from multimodal_perception.models import CUnet
+from multimodal_perception.models import SegCUnet
 from multimodal_perception.algorithm import MultiModalSegmentation
 from multimodal_perception.utils import data_parse
 
@@ -9,10 +10,10 @@ from multimodal_perception.utils import data_parse
 
 
 def main():
-    rgb_image_size = (3, 640, 512)
-    thremal_image_size = (1, 640, 512)
+    rgb_size = torch.Size((3, 640, 512))
+    thremal_size = torch.Size((1, 640, 512))
 
-    cunet = CUnet()
+    cunet = SegCUnet(rgb_size, thremal_size)
     models = {"cunet": cunet}
 
     multimodal_segmentation = MultiModalSegmentation(
@@ -20,25 +21,23 @@ def main():
         models,
     )
 
-    transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize(mean=0, std=1),
-        ]
-    )
-    data = data_parse("./data/minist")
+    rgb_transform = Compose([ToTensor(), Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0])])
+    thermal_transform = Compose([ToTensor(), Normalize(mean=0, std=1)])
+    transforms = {"rgb": rgb_transform, "thermal": thermal_transform}
+
+    data = data_parse("./data/flir_aligned")
 
     train_cfg = {
         "epochs": 100,
-        "log_dir": "./logs/vq_vae/",
-        "model_dir": "./checkpoints/vq_vae/",
+        "log_dir": "./logs/multimodal_segmentation/",
+        "model_dir": "./checkpoints/multimodal_segmentation/",
         "log_interval": 10,
         "save_interval": 10,
         "batch_size": 256,
         "data_num_workers": 4,
     }
 
-    trainer = Trainer(train_cfg, data, transform, multimodal_segmentation)
+    trainer = Trainer(train_cfg, data, transforms, multimodal_segmentation)
 
     trainer.train()
     trainer.eval()

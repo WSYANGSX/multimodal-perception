@@ -2,11 +2,20 @@ import os
 import numpy as np
 from PIL import Image
 
+import torch
 from torch.utils.data import Dataset
+from torchvision import transforms
 
 
 class MultiModalDataset(Dataset):
-    def __init__(self, rgb_data, thermal_data, labels=None, rgb_transform=None, thermal_transform=None) -> None:
+    def __init__(
+        self,
+        rgb_data: torch.Tensor | np.ndarray,
+        thermal_data: torch.Tensor | np.ndarray,
+        labels: torch.Tensor | np.ndarray = None,
+        rgb_transform: transforms.Compose = None,
+        thermal_transform: transforms.Compose = None,
+    ) -> None:
         super().__init__()
 
         if len(rgb_data) != len(thermal_data):
@@ -14,7 +23,7 @@ class MultiModalDataset(Dataset):
 
         self.image_data = rgb_data
         self.thermal_data = thermal_data
-        self.labels = labels
+        self.labels = labels if isinstance(labels, torch.Tensor) else torch.from_numpy(labels)
 
         self.rgb_transform = rgb_transform
         self.thermal_transform = thermal_transform
@@ -56,7 +65,7 @@ def load_modality_data(data_ids: list, data_path: str, annotations_path: str) ->
     thermals = []
     masks = []
 
-    for idx, data_id in enumerate(data_ids, 1):
+    for _, data_id in enumerate(data_ids):
         # 构建文件路径
         thermal_filename = f"{data_id}.jpeg"
         rgb_filename = f"{data_id.replace('PreviewData', 'RGB')}.jpg"

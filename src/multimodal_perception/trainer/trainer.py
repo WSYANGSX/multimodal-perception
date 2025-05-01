@@ -20,12 +20,13 @@ class Trainer:
         transforms: dict[str, transforms.Compose],
         algo: AlgorithmBase,
     ):
-        """机器学习算法训练器.
+        """多模态感知算法训练器.
 
         Args:
             cfg (dict): 训练器配置信息.
-            data (Sequence[torch.Tensor | np.ndarray]): 数据集 (train_data, train_labels, val_data, val_labels)
-            transform (transforms.Compose): 数据转换器.
+            data (dict[str, Union[torch.Tensor, np.ndarray]]): 数据集 {"rgb_train": *, "thermal_train": *, "mask_train": *,
+            "rgb_val": *, "thermal_val": *, "mask_val": *}
+            transform (dict[str, transforms.Compose]): 数据转换器{"rgb": *, "thermal": *}.
             algo (AlgorithmBase): 算法.
         """
         self.cfg = cfg
@@ -65,10 +66,10 @@ class Trainer:
     ):
         # 创建dataset和datasetloader
         train_dataset = MultiModalDataset(
-            data["rgb_train"], data["thermal_train"], transforms["rgb"], transforms["thermal"]
+            data["rgb_train"], data["thermal_train"], data["mask_train"], transforms["rgb"], transforms["thermal"]
         )
         validate_dataset = MultiModalDataset(
-            data["rgb_val"], data["thermal_val"], transforms["rgb"], transforms["thermal"]
+            data["rgb_val"], data["thermal_val"], data["mask_val"], transforms["rgb"], transforms["thermal"]
         )
 
         train_loader = DataLoader(
