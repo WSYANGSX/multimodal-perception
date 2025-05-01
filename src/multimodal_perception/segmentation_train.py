@@ -6,8 +6,6 @@ from multimodal_perception.models import SegCUnet
 from multimodal_perception.algorithm import MultiModalSegmentation
 from multimodal_perception.utils import data_parse
 
-# 模型定义
-
 
 def main():
     rgb_size = torch.Size((3, 640, 512))

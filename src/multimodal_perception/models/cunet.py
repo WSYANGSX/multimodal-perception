@@ -107,17 +107,20 @@ class UNet(nn.Module):
 
 # 分割网络
 class SegCUnet(BaseNet):
-    def __init__(self, rgb_size: torch.Size, thermal_size: torch.Size):
+    def __init__(self, rgb_size: torch.Size, thermal_size: torch.Size, atten_heads: int = 4):
         super().__init__()
         self.rgb_size = rgb_size
         self.thermal_size = thermal_size
+
+        self.atten_dim = self.rgb_size[-1] * self.rgb_size[-2]
+        self.embed_dim = self.atten_dim * atten_heads
 
         self.modal_droupout = ModalDropoutBlock(0.1)
 
         self.rgb_unet = UNet(3, 1)
         self.thermal_unet = UNet(1, 1)
 
-        self.cross_attentation = CrossAttentionBlock()
+        self.cross_attentation = CrossAttentionBlock(self.embed_dim, atten_heads)
 
         self.post_process = nn.Conv2d(2, 1, 3, 1)
 

@@ -95,7 +95,7 @@ class CrossAttentionBlock(nn.Module):
 
 # 残差模块
 class ResidualBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, time_dim: int, dropout: float = 0.1) -> None:
+    def __init__(self, in_channels: int, out_channels: int, dropout: float = 0.1) -> None:
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)  # 图像大小不变
         self.norm1 = nn.GroupNorm(32, out_channels)
