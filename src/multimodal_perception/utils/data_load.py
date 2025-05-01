@@ -6,19 +6,17 @@ from torch.utils.data import Dataset
 
 
 class MultiModalDataset(Dataset):
-    def __init__(self, image_data, thermal_data, labels=None, image_transform=None, thermal_transform=None) -> None:
+    def __init__(self, rgb_data, thermal_data, labels=None, rgb_transform=None, thermal_transform=None) -> None:
         super().__init__()
 
-        if len(image_data) != len(thermal_data):
-            raise ValueError(
-                f"The length of image data ({len(image_data)}) is not equal to the length of thermal data ({len(thermal_data)})."
-            )
+        if len(rgb_data) != len(thermal_data):
+            raise ValueError(f"The num of image ({len(rgb_data)}) is not equal to thermal ({len(thermal_data)}).")
 
-        self.image_data = image_data
+        self.image_data = rgb_data
         self.thermal_data = thermal_data
         self.labels = labels
 
-        self.image_transform = image_transform
+        self.rgb_transform = rgb_transform
         self.thermal_transform = thermal_transform
 
     def __len__(self) -> int:
@@ -31,8 +29,8 @@ class MultiModalDataset(Dataset):
         if self.labels is not None:
             labels_sample = self.labels[index]
 
-        if self.image_transform:
-            image_sample = self.image_transform(image_sample)
+        if self.rgb_transform:
+            image_sample = self.rgb_transform(image_sample)
         if self.thermal_transform:
             thermal_sample = self.thermal_transform(thermal_sample)
 
@@ -54,8 +52,8 @@ def load_data_ids(file_path: str) -> list[str]:
 
 def load_modality_data(data_ids: list, data_path: str, annotations_path: str) -> tuple:
     """加载多模态数据"""
-    rgb_images = []
-    thermal_images = []
+    rgbs = []
+    thermals = []
     masks = []
 
     for idx, data_id in enumerate(data_ids, 1):
@@ -90,15 +88,15 @@ def load_modality_data(data_ids: list, data_path: str, annotations_path: str) ->
                 raise ValueError("Thermal-RGB dimension mismatch")
 
             # 收集有效数据
-            thermal_images.append(thermal_array)
-            rgb_images.append(rgb_array)
+            thermals.append(thermal_array)
+            rgbs.append(rgb_array)
             masks.append(mask_array)
 
         except Exception as e:
             print(f"[WARNING] Skipping invalid data {data_id}: {str(e)}")
             continue
 
-    return np.array(rgb_images), np.array(thermal_images), np.array(masks)
+    return np.array(rgbs), np.array(thermals), np.array(masks)
 
 
 def data_parse(file_path: str) -> tuple:
@@ -124,7 +122,14 @@ def data_parse(file_path: str) -> tuple:
         print(f"Training:  RGB {rgb_train.shape}  Thermal {thermal_train.shape}  Masks {mask_train.shape}")
         print(f"Validation: RGB {rgb_val.shape}  Thermal {thermal_val.shape}  Masks {mask_val.shape}")
 
-        return rgb_train, thermal_train, mask_train, rgb_val, thermal_val, mask_val
+        return {
+            "rgb_train": rgb_train,
+            "thermal_train": thermal_train,
+            "mask_train": mask_train,
+            "rgb_val": rgb_val,
+            "thermal_val": thermal_val,
+            "mask_val": mask_val,
+        }
 
     except Exception as e:
         print(f"[ERROR] Data loading failed: {str(e)}")

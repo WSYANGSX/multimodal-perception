@@ -1,21 +1,24 @@
 import os
 import torch
 import numpy as np
-from typing import Sequence, Any
+from typing import Any, Union
 from tqdm import trange
 
-from torchvision.transforms import Compose
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 
-from machine_learning.utils import CustomDataset
-from machine_learning.algorithms import AlgorithmBase
+from multimodal_perception.utils import MultiModalDataset
+from multimodal_perception.algorithm import AlgorithmBase
 
 
 class Trainer:
     def __init__(
-        self, cfg: dict, data: Sequence[torch.Tensor | np.ndarray], transform: transforms.Compose, algo: AlgorithmBase
+        self,
+        cfg: dict,
+        data: dict[str, Union[torch.Tensor, np.ndarray]],
+        transforms: dict[str, transforms.Compose],
+        algo: AlgorithmBase,
     ):
         """机器学习算法训练器.
 
@@ -29,7 +32,7 @@ class Trainer:
         self._algorithm = algo
 
         # -------------------- 配置数据 --------------------
-        train_loader, val_loader = self._load_datasets(*data, transform)
+        train_loader, val_loader = self._load_datasets(data, transforms)
         self._algorithm._initialize_data_loader(train_loader, val_loader)
 
         # -------------------- 配置记录器 --------------------
@@ -57,15 +60,16 @@ class Trainer:
 
     def _load_datasets(
         self,
-        train_data: torch.Tensor | np.ndarray,
-        train_labels: torch.Tensor | np.ndarray,
-        val_data: torch.Tensor | np.ndarray,
-        val_labels: torch.Tensor | np.ndarray,
-        transform: Compose,
+        data: dict[str, Union[torch.Tensor, np.ndarray]],
+        transforms: dict[str, transforms.Compose],
     ):
         # 创建dataset和datasetloader
-        train_dataset = CustomDataset(train_data, train_labels, transform)
-        validate_dataset = CustomDataset(val_data, val_labels, transform)
+        train_dataset = MultiModalDataset(
+            data["rgb_train"], data["thermal_train"], transforms["rgb"], transforms["thermal"]
+        )
+        validate_dataset = MultiModalDataset(
+            data["rgb_val"], data["thermal_val"], transforms["rgb"], transforms["thermal"]
+        )
 
         train_loader = DataLoader(
             train_dataset,

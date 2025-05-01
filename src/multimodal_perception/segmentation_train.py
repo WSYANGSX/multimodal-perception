@@ -3,13 +3,14 @@ from torchvision import transforms
 from multimodal_perception.trainer import Trainer
 from multimodal_perception.models import CUnet
 from multimodal_perception.algorithm import MultiModalSegmentation
+from multimodal_perception.utils import data_parse
 
 # 模型定义
 
 
 def main():
-    rgb_size = (3, 512, 512)
-    thremal_size = (1, 512, 512)
+    rgb_image_size = (3, 640, 512)
+    thremal_image_size = (1, 640, 512)
 
     cunet = CUnet()
     models = {"cunet": cunet}
